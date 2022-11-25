@@ -1,0 +1,43 @@
+ Enter Test Program integralTransformation.
+                        1 GTests/test000.mat
+ 
+ 
+  iPrint =                         0
+  matrixFilename = GTests/test000.mat
+  doN8 =   F
+  fail =   F
+ 
+ 
+   Matrix File: GTests/test000.mat
+
+ nAtoms    =   2      nBasis  =   6      nBasisUse=   6
+ nElectrons=   4      nElAlpha=   2      nElBeta  =   2
+
+ Alpha MO Energies
+       1       -2.347001
+       2       -0.292690
+       3        0.078920
+       4        0.163784
+       5        0.163784
+       6        0.571573
+  Hrant -  isUnrestricted:   F
+
+ Skipping O(N^8) transformation.
+ Time (Quarter Transformation 1a):      0.0 s.
+ Time (Quarter Transformation 1b):      0.0 s.
+ Time (Quarter Transformation 2a):      0.0 s.
+ Time (Quarter Transformation 2b):      0.0 s.
+ Time (Quarter Transformation 3a):      0.0 s.
+ Time (Quarter Transformation 3b):      0.0 s.
+ Time (Quarter Transformation 4):      0.0 s.
+ 
+  Same Spin E2...
+ Time (Same Spin E2):      0.0 s.
+ 
+  Opposite Spin E2...
+ Time (Opposite Spin E2):      0.0 s.
+
+ E(2)-SS =   -0.0000010707 a.u.    E(2)-OS =   -0.0122645011 a.u.
+  Total E2 =   -1.2266642465321002E-002
+
+ END OF PROGRAM integralTransformation.
