@@ -5,6 +5,7 @@
   iPrint =                         0
   matrixFilename = GTests/test000.mat
   doN8 =   F
+  doSlowN5 =   T
   fail =   F
  
  
