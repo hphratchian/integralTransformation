@@ -25,7 +25,7 @@ INCLUDE 'integraltransformation_mod.f03'
       type(MQC_Variable)::ERIs,mqcTmpArray
       character(len=512)::tmpString,matrixFilename
       type(mqc_gaussian_unformatted_matrix_file)::GMatrixFile
-      logical::fail=.false.,doN8=.false.
+      logical::fail=.false.,doN8=.false.,doSlowN5=.true.
 !
 !     Format Statements
 !
@@ -49,7 +49,7 @@ INCLUDE 'integraltransformation_mod.f03'
       if(nCommands.eq.0)  &
         call mqc_error('No command line arguments provided. The input Gaussian matrix file name is required.')
       call get_command_argument(1,tmpString)
-      call commandLineArgs(iPrint,matrixFilename,doN8,fail)
+      call commandLineArgs(iPrint,matrixFilename,doN8,doSlowN5,fail)
 
       write(iOut,*)
       write(iOut,*)
@@ -57,6 +57,7 @@ INCLUDE 'integraltransformation_mod.f03'
       write(iOut,*)' iPrint = ',iPrint
       write(iOut,*)' matrixFilename = ',TRIM(matrixFilename)
       write(iOut,*)' doN8 = ',doN8
+      write(iOut,*)' doSlowN5 = ',doSlowN5
       write(iOut,*)' fail = ',fail
 
       write(iOut,*)
@@ -119,6 +120,7 @@ INCLUDE 'integraltransformation_mod.f03'
         moInts = float(0)
         call cpu_time(time1)
         write(iOut,5000) 'Init moInts',time1-time0
+        flush(iOut)
 !
         call cpu_time(time0)
 
@@ -149,6 +151,7 @@ INCLUDE 'integraltransformation_mod.f03'
       else
         write(iOut,1510)
       endIf
+      flush(iOut)
 !
 !     Do quarter transformations now.
 !
@@ -156,22 +159,25 @@ INCLUDE 'integraltransformation_mod.f03'
       Allocate(partialInts1(nBasisUse,nBasis,nBasis,nBasis))
       partialInts1 = float(0)
 !
-      call cpu_time(time0)
-      do p = 1,nBasisUse
-        do mu = 1,nBasis
-          do nu = 1,nBasis
-            do lambda = 1,nBasis
-              do sigma = 1,nBasis
-                partialInts1(p,nu,lambda,sigma) = partialInts1(p,nu,lambda,sigma)  &
-                  + CAlpha(mu,p)*aoInts(mu,nu,lambda,sigma)
+      if(doSlowN5) then
+        call cpu_time(time0)
+        do p = 1,nBasisUse
+          do mu = 1,nBasis
+            do nu = 1,nBasis
+              do lambda = 1,nBasis
+                do sigma = 1,nBasis
+                  partialInts1(p,nu,lambda,sigma) = partialInts1(p,nu,lambda,sigma)  &
+                    + CAlpha(mu,p)*aoInts(mu,nu,lambda,sigma)
+                endDo
               endDo
             endDo
           endDo
         endDo
-      endDo
-      call cpu_time(time1)
-      write(iOut,5000) 'Quarter Transformation 1a',time1-time0
-      partialInts1 = float(0)
+        call cpu_time(time1)
+        write(iOut,5000) 'Quarter Transformation 1a',time1-time0
+        flush(iOut)
+        partialInts1 = float(0)
+      endIf
 !
       call cpu_time(time0)
       do nu = 1,nBasis
@@ -188,26 +194,30 @@ INCLUDE 'integraltransformation_mod.f03'
       endDo
       call cpu_time(time1)
       write(iOut,5000) 'Quarter Transformation 1b',time1-time0
+      flush(iOut)
 !
       Allocate(partialInts2(nBasisUse,nBasisUse,nBasis,nBasis))
       partialInts2 = float(0)
 !
-      call cpu_time(time0)
-      do p = 1,nBasisUse
-        do q = 1,nBasisUse
-          do nu = 1,nBasis
-            do lambda = 1,nBasis
-              do sigma = 1,nBasis
-                partialInts2(p,q,lambda,sigma) = partialInts2(p,q,lambda,sigma)  &
-                  + CAlpha(nu,q)*partialInts1(p,nu,lambda,sigma)
+      if(doSlowN5) then
+        call cpu_time(time0)
+        do p = 1,nBasisUse
+          do q = 1,nBasisUse
+            do nu = 1,nBasis
+              do lambda = 1,nBasis
+                do sigma = 1,nBasis
+                  partialInts2(p,q,lambda,sigma) = partialInts2(p,q,lambda,sigma)  &
+                    + CAlpha(nu,q)*partialInts1(p,nu,lambda,sigma)
+                endDo
               endDo
             endDo
           endDo
         endDo
-      endDo
-      call cpu_time(time1)
-      write(iOut,5000) 'Quarter Transformation 2a',time1-time0
-      partialInts2 = float(0)
+        call cpu_time(time1)
+        write(iOut,5000) 'Quarter Transformation 2a',time1-time0
+        flush(iOut)
+        partialInts2 = float(0)
+      endIf
 !
       call cpu_time(time0)
       do lambda = 1,nBasis
@@ -224,27 +234,31 @@ INCLUDE 'integraltransformation_mod.f03'
       endDo
       call cpu_time(time1)
       write(iOut,5000) 'Quarter Transformation 2b',time1-time0
+      flush(iOut)
 !
       DeAllocate(partialInts1)
       Allocate(partialInts1(nBasisUse,nBasisUse,nBasisUse,nBasis))
       partialInts1 = float(0)
 !
-      call cpu_time(time0)
-      do p = 1,nBasisUse
-        do q = 1,nBasisUse
-          do r = 1,nBasisUse
-            do lambda = 1,nBasis
-              do sigma = 1,nBasis
-                partialInts1(p,q,r,sigma) = partialInts1(p,q,r,sigma)  &
-                  + CAlpha(lambda,r)*partialInts2(p,q,lambda,sigma)
+      if(doSlowN5) then
+        call cpu_time(time0)
+        do p = 1,nBasisUse
+          do q = 1,nBasisUse
+            do r = 1,nBasisUse
+              do lambda = 1,nBasis
+                do sigma = 1,nBasis
+                  partialInts1(p,q,r,sigma) = partialInts1(p,q,r,sigma)  &
+                    + CAlpha(lambda,r)*partialInts2(p,q,lambda,sigma)
+                endDo
               endDo
             endDo
           endDo
         endDo
-      endDo
-      call cpu_time(time1)
-      write(iOut,5000) 'Quarter Transformation 3a',time1-time0
-      partialInts1 = float(0)
+        call cpu_time(time1)
+        write(iOut,5000) 'Quarter Transformation 3a',time1-time0
+        flush(iOut)
+        partialInts1 = float(0)
+      endIf
 !
       call cpu_time(time0)
       do p = 1,nBasisUse
@@ -261,6 +275,7 @@ INCLUDE 'integraltransformation_mod.f03'
       endDo
       call cpu_time(time1)
       write(iOut,5000) 'Quarter Transformation 3b',time1-time0
+      flush(iOut)
 !
       DeAllocate(partialInts2)
       moInts = float(0)
@@ -280,6 +295,7 @@ INCLUDE 'integraltransformation_mod.f03'
       endDo
       call cpu_time(time1)
       write(iOut,5000) 'Quarter Transformation 4',time1-time0
+      flush(iOut)
       DeAllocate(partialInts1)
       if(iPrint.ge.1) call mqc_print_rank4Tensor_array_real(iOut,  &
         moInts,header='Transformed MO Integrals 2')

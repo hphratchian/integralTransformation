@@ -26,13 +26,13 @@
 !
 !
 !PROCEDURE commandLineArgs
-      subroutine commandLineArgs(iPrint,matrixFilename,doN8,fail)
+      subroutine commandLineArgs(iPrint,matrixFilename,doN8,doSlowN5,fail)
 !
 !     This subroutine is used to process the command line arguments.
 !
       integer,intent(OUT)::iPrint
       character(len=512),intent(OUT)::matrixFilename
-      logical,intent(OUT)::doN8,fail
+      logical,intent(OUT)::doN8,doSlowN5,fail
 !
       integer::nCommands,nMatrixFilenames,i
       character(len=512)::tmpString,lowercase
@@ -46,6 +46,7 @@
 !
       iPrint = 0
       doN8 = .false.
+      doSlowN5 = .true.
       fail = .false.
       nMatrixFilenames = 0
 !
@@ -63,6 +64,11 @@
             doN8 = .true.
           case('skipn8')
             doN8 = .false.
+          case('doslown5')
+            doSlowN5 = .true.
+          case('skipslown5')
+            doSlowN5 = .false.
+            write(*,*)' Hrant - FOUND -skipSlowN5.'
           case('debug')
             iPrint = 1
           case default
