@@ -2,3 +2,9 @@
 *.log
 *.out
 *.chk
+*.sbatch
+*.qlog
+*.fmat
+*.mod
+*.o
+*.exe
