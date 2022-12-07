@@ -8,3 +8,6 @@
 *.mod
 *.o
 *.exe
+dat*
+log*
+out*

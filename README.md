@@ -6,6 +6,9 @@ The program requires a Gaussian unformatted matrix file as input. Such a file ca
 There are a few option switches available for the program:
   - `-doN8` requests and `-skipN8` supresses O(N^8) transformation.
   - `-doSlowN5` requests and `-skipSlowN5` supresses slower blocks of O(N^5) quarter transformation code.
+  - `-doRegularN5` requests and `-skipRegularN5` supresses regular blocks of O(N^5) quarter transformation code.
+  - `-useBLAS` requests use of BLAS DGEMM calls to carry out O(N^5) quarter transformations as matrix multiplications.
+  - `-useMatMul` requests use of intrinsic MatMul calls to carry out O(N^5) quarter transformations as matrix multiplications.
   - `-debug` requests extra print.
 
 

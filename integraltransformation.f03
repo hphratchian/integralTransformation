@@ -123,16 +123,7 @@ INCLUDE 'integraltransformation_mod.f03'
 
 !hph+
 !      aoInts = ERIs
-      write(*,*)
-      write(*,*)' Hrant - ERIs%realArray(1)     = ',ERIs%realArray(1)
-      write(*,*)' Hrant - ERIs%realArray(1000)  = ',ERIs%realArray(1000)
-      write(*,*)' Hrant - ERIs%realArray(230^4) = ',ERIs%realArray(230*230*230*230)
-      write(*,*)
       call dpReshape4(nBasis,nBasis,nBasis,nBasis,ERIs%realArray,aoInts)
-      write(*,*)' Hrant - aoInts(1  ,1  ,1  ,1  ) = ',aoInts(1,1,1,1)
-      write(*,*)' Hrant - aoInts(230,230,230,230) = ',aoInts(230,230,230,230)
-      write(*,*)
-      write(*,*)
 !hph-
 
       if(iPrint.ge.2) call mqc_print_rank4Tensor_array_real(iOut,  &
@@ -432,21 +423,108 @@ INCLUDE 'integraltransformation_mod.f03'
       write(iOut,5000) 'Finalize moInts w/MatMul',time1-time0
       flush(iOut)
 
-
+!hph+
+!!
+!!     Try this again...
+!!
+!      Allocate(tmpMatrix1(nBasisUse,nBasis*nBasis*nBasis))
+!      Allocate(tmpMatrix2(nBasis,nBasis*nBasis*nBasisUse))
+!      call cpu_time(time0)
+!      call dgemm('t','n',nBasisUse,nBasis*nBasis*nBasis,  &
+!        nBasis,float(1),CAlpha,nBasis,aoInts,nBasis,float(0),  &
+!        tmpMatrix1,nBasisUse)
+!      call cpu_time(time1)
+!      write(iOut,5000) 'Quarter Transformation 1',time1-time0
+!      flush(iOut)
+!!
+!      call cpu_time(time0)
+!      tmpMatrix2 = Reshape(Transpose(tmpMatrix1),  &
+!        (/nBasis,nBasis*nBasis*nBasisUse/))
+!      call cpu_time(time1)
+!      write(iOut,5000) 'tmpMatrix1 transpose 1',time1-time0
+!      flush(iOut)
+!      call cpu_time(time0)
+!      DeAllocate(tmpMatrix1)
+!      Allocate(tmpMatrix1(nBasisUse,nBasis*nBasis*nBasisUse))
+!      if(useBLAS) then
+!        call dgemm('t','n',nBasisUse,nBasis*nBasis*nBasisUse,  &
+!          nBasis,float(1),CAlpha,nBasis,tmpMatrix2,nBasis,float(0),  &
+!          tmpMatrix1,nBasisUse)
+!      else
+!        tmpMatrix1 = MatMul(Transpose(CAlpha),tmpMatrix2)
+!      endIf
+!      call cpu_time(time1)
+!      write(iOut,5000) 'Quarter Transformation 2 w/MatMul',time1-time0
+!      flush(iOut)
+!!
+!      call cpu_time(time0)
+!      DeAllocate(tmpMatrix2)
+!      Allocate(tmpMatrix2(nBasis,nBasis*nBasisUse*nBasisUse))
+!      tmpMatrix2 = Reshape(Transpose(tmpMatrix1),  &
+!        (/nBasis,nBasis*nBasisUse*nBasisUse/))
+!      call cpu_time(time1)
+!      write(iOut,5000) 'tmpMatrix1 transpose 2',time1-time0
+!      flush(iOut)
+!      call cpu_time(time0)
+!      DeAllocate(tmpMatrix1)
+!      Allocate(tmpMatrix1(nBasisUse,nBasis*nBasisUse*nBasisUse))
+!      if(useBLAS) then
+!        call dgemm('t','n',nBasisUse,nBasis*nBasisUse*nBasisUse,  &
+!          nBasis,float(1),CAlpha,nBasis,tmpMatrix2,nBasis,float(0),  &
+!          tmpMatrix1,nBasisUse)
+!      else
+!        tmpMatrix1 = MatMul(Transpose(CAlpha),tmpMatrix2)
+!      endIf
+!      call cpu_time(time1)
+!      write(iOut,5000) 'Quarter Transformation 3 w/MatMul',time1-time0
+!      flush(iOut)
+!!
+!      call cpu_time(time0)
+!      DeAllocate(tmpMatrix2)
+!      Allocate(tmpMatrix2(nBasis,nBasisUse*nBasisUse*nBasisUse))
+!      tmpMatrix2 = Reshape(Transpose(tmpMatrix1),  &
+!        (/nBasis,nBasisUse*nBasisUse*nBasisUse/))
+!      call cpu_time(time1)
+!      write(iOut,5000) 'tmpMatrix1 transpose 3',time1-time0
+!      flush(iOut)
+!      call cpu_time(time0)
+!      DeAllocate(tmpMatrix1)
+!      Allocate(tmpMatrix1(nBasisUse,nBasisUse*nBasisUse*nBasisUse))
+!      if(useBLAS) then
+!        call dgemm('t','n',nBasisUse,nBasisUse*nBasisUse*nBasisUse,  &
+!          nBasis,float(1),CAlpha,nBasis,tmpMatrix2,nBasis,float(0),  &
+!          tmpMatrix1,nBasisUse)
+!      else
+!        tmpMatrix1 = MatMul(Transpose(CAlpha),tmpMatrix2)
+!      endIf
+!      call cpu_time(time1)
+!      write(iOut,5000) 'Quarter Transformation 4 w/MatMul',time1-time0
+!      flush(iOut)
+!!
+!      call cpu_time(time0)
+!      moInts = Reshape(Transpose(tmpMatrix1),  &
+!        (/nBasisUse,nBasisUse,nBasisUse,nBasisUse/))
+!      DeAllocate(tmpMatrix1,tmpMatrix2)
+!      call cpu_time(time1)
+!      write(iOut,5000) 'Finalize moInts w/MatMul',time1-time0
+!      flush(iOut)
 !
-!     Test the timing of N^2,N^2 transpose.
 !
-      call cpu_time(time0)
-      Allocate(tmpMatrix1(nBasisUse*nBasisUse,nBasisUse*nBasisUse))
-      tmpMatrix1 = Reshape(moInts,  &
-        (/nBasisUse*nBasisUse,nBasisUse*nBasisUse/))
-      call cpu_time(time1)
-      write(iOut,5000) 'Time to allocate tmpMatrix and reshape mo ERIs.',time1-time0
-      call cpu_time(time0)
-      Allocate(tmpMatrix2(nBasisUse*nBasisUse,nBasisUse*nBasisUse))
-      tmpMatrix2 = Transpose(tmpMatrix1)
-      call cpu_time(time1)
-      write(iOut,5000) 'Time for ERI N^2 x N^2 transpose.',time1-time0
+!!
+!!     Test the timing of N^2,N^2 transpose.
+!!
+!      call cpu_time(time0)
+!      Allocate(tmpMatrix1(nBasisUse*nBasisUse,nBasisUse*nBasisUse))
+!      tmpMatrix1 = Reshape(moInts,  &
+!        (/nBasisUse*nBasisUse,nBasisUse*nBasisUse/))
+!      call cpu_time(time1)
+!      write(iOut,5000) 'Time to allocate tmpMatrix and reshape mo ERIs.',time1-time0
+!      call cpu_time(time0)
+!      Allocate(tmpMatrix2(nBasisUse*nBasisUse,nBasisUse*nBasisUse))
+!      tmpMatrix2 = Transpose(tmpMatrix1)
+!      call cpu_time(time1)
+!      write(iOut,5000) 'Time for ERI N^2 x N^2 transpose.',time1-time0
+!hph-
 
       
       

@@ -1,18 +1,23 @@
  Enter Test Program integralTransformation.
                         1 GTests/test000.mat
+  Hrant - nOMP =                        12
  
  
-  iPrint =                         0
+  iPrint         =                         0
   matrixFilename = GTests/test000.mat
-  doN8 =   F
-  doSlowN5 =   T
-  fail =   F
+  doN8           =   F
+  doSlowN5       =   F
+  doRegularN5    =   F
+  useBLAS        =   T
+  fail           =   F
  
  
    Matrix File: GTests/test000.mat
 
  nAtoms    =   2      nBasis  =   6      nBasisUse=   6
  nElectrons=   4      nElAlpha=   2      nElBeta  =   2
+     myRank =                         1
+     myDimensions(1) =                         6
 
  Alpha MO Energies
        1       -2.347001
@@ -22,15 +27,19 @@
        5        0.163784
        6        0.571573
   Hrant -  isUnrestricted:   F
+  Hrant - FLAG B
+  Hrant - FLAG C
 
  Skipping O(N^8) transformation.
- Time (Quarter Transformation 1a):      0.0 s.
- Time (Quarter Transformation 1b):      0.0 s.
- Time (Quarter Transformation 2a):      0.0 s.
- Time (Quarter Transformation 2b):      0.0 s.
- Time (Quarter Transformation 3a):      0.0 s.
- Time (Quarter Transformation 3b):      0.0 s.
- Time (Quarter Transformation 4):      0.0 s.
+ Time (Init moInts and partialInts1):      0.0 s.
+ Time (Quarter Transformation 1 w/MatMul):      0.0 s.
+ Time (tmpMatrix1 transpose 1):      0.0 s.
+ Time (Quarter Transformation 2 w/MatMul):      0.0 s.
+ Time (tmpMatrix1 transpose 2):      0.0 s.
+ Time (Quarter Transformation 3 w/MatMul):      0.0 s.
+ Time (tmpMatrix1 transpose 3):      0.0 s.
+ Time (Quarter Transformation 4 w/MatMul):      0.0 s.
+ Time (Finalize moInts w/MatMul):      0.0 s.
  
   Same Spin E2...
  Time (Same Spin E2):      0.0 s.
@@ -40,5 +49,6 @@
 
  E(2)-SS =   -0.0000010707 a.u.    E(2)-OS =   -0.0122645011 a.u.
   Total E2 =   -1.2266642465321002E-002
+ Time (TOTAL JOB TIME):      0.0 s.
 
  END OF PROGRAM integralTransformation.
