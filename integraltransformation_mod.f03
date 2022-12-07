@@ -13,6 +13,7 @@
       use mqc_algebra2
       use mqc_algebra
       use iso_fortran_env
+      use OMP_LIB
 !
 !     Variable Declarations
 !
@@ -26,13 +27,14 @@
 !
 !
 !PROCEDURE commandLineArgs
-      subroutine commandLineArgs(iPrint,matrixFilename,doN8,doSlowN5,fail)
+      subroutine commandLineArgs(iPrint,matrixFilename,doN8,doSlowN5,  &
+        doRegularN5,useBLAS,fail)
 !
 !     This subroutine is used to process the command line arguments.
 !
       integer,intent(OUT)::iPrint
       character(len=512),intent(OUT)::matrixFilename
-      logical,intent(OUT)::doN8,doSlowN5,fail
+      logical,intent(OUT)::doN8,doSlowN5,doRegularN5,useBLAS,fail
 !
       integer::nCommands,nMatrixFilenames,i
       character(len=512)::tmpString,lowercase
@@ -46,7 +48,9 @@
 !
       iPrint = 0
       doN8 = .false.
-      doSlowN5 = .true.
+      doSlowN5 = .false.
+      doRegularN5 = .false.
+      useBLAS = .true.
       fail = .false.
       nMatrixFilenames = 0
 !
@@ -68,7 +72,14 @@
             doSlowN5 = .true.
           case('skipslown5')
             doSlowN5 = .false.
-            write(*,*)' Hrant - FOUND -skipSlowN5.'
+          case('doregularn5')
+            doRegularN5 = .true.
+          case('skipregularn5')
+            doRegularN5 = .false.
+          case('useblas')
+            useBLAS = .true.
+          case('usematmul')
+            useBLAS = .false.
           case('debug')
             iPrint = 1
           case default

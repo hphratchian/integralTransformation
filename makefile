@@ -31,4 +31,4 @@ all: integraltransformation.exe
 # f03 source (*.f03) file.
 #
 %.exe: %.f03 %_mod.f03 $(MQCLIB)/libmqc.a
-	$(RunF) $(LIBS) $(Prof) -I$(MQCMODS) -o $*.exe $*.f03 $(MQCLIB)/libmqc.a
+	$(RunF) $(LIBS) $(Prof) -mp -I$(MQCMODS) -o $*.exe $*.f03 $(MQCLIB)/libmqc.a

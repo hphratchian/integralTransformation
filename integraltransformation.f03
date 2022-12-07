@@ -14,18 +14,21 @@ INCLUDE 'integraltransformation_mod.f03'
 !     Variable Declarations
 !
       implicit none
-      integer(kind=int64)::nCommands,iPrint=0,nAtoms,nBasis,nBasisUse,  &
-        nElectrons,nElectronsAlpha,nElectronsBeta
+      integer(kind=int64)::nCommands,iPrint=0,nOMP,nAtoms,nBasis,  &
+        nBasisUse,nElectrons,nElectronsAlpha,nElectronsBeta
       integer(kind=int64)::mu,nu,lambda,sigma,p,q,r,s,pq,rs,pqrs,iCount,i,j,a,b
-      real(kind=real64)::time0,time1,deltaIJAB,numerator,E2AA,E2BB,E2AB,E2BA
+      real(kind=real64)::timeStart,timeEnd,time0,time1,tmpReal,  &
+        deltaIJAB,numerator,E2AA,E2BB,E2AB,E2BA
       real(kind=real64),dimension(:),allocatable::moEnergiesAlpha,moEnergiesBeta
-      real(kind=real64),dimension(:,:),allocatable::CAlpha,CBeta
+      real(kind=real64),dimension(:,:),allocatable::CAlpha,CBeta,  &
+        tmpMatrix1,tmpMatrix2
       real(kind=real64),dimension(:,:,:,:),allocatable::aoInts,moInts,  &
         partialInts1,partialInts2
       type(MQC_Variable)::ERIs,mqcTmpArray
       character(len=512)::tmpString,matrixFilename
       type(mqc_gaussian_unformatted_matrix_file)::GMatrixFile
-      logical::fail=.false.,doN8=.false.,doSlowN5=.true.
+      logical::fail=.false.,doN8=.false.,doSlowN5=.true.,  &
+        doRegularN5=.true.,useBLAS=.true.
 !
 !     Format Statements
 !
@@ -41,6 +44,7 @@ INCLUDE 'integraltransformation_mod.f03'
  8999 Format(/,1x,'END OF PROGRAM integralTransformation.')
 !
 !
+      call cpu_time(timeStart)
       write(IOut,1000)
 !
 !     Open the Gaussian matrix file and load the number of atomic centers.
@@ -49,20 +53,24 @@ INCLUDE 'integraltransformation_mod.f03'
       if(nCommands.eq.0)  &
         call mqc_error('No command line arguments provided. The input Gaussian matrix file name is required.')
       call get_command_argument(1,tmpString)
-      call commandLineArgs(iPrint,matrixFilename,doN8,doSlowN5,fail)
+      call commandLineArgs(iPrint,matrixFilename,doN8,doSlowN5,  &
+        doRegularN5,useBLAS,fail)
+
+      nOMP = 12
+      write(*,*)' Hrant - nOMP = ',nOMP
+      call omp_set_num_threads(nOMP)
 
       write(iOut,*)
       write(iOut,*)
-
-      write(iOut,*)' iPrint = ',iPrint
+      write(iOut,*)' iPrint         = ',iPrint
       write(iOut,*)' matrixFilename = ',TRIM(matrixFilename)
-      write(iOut,*)' doN8 = ',doN8
-      write(iOut,*)' doSlowN5 = ',doSlowN5
-      write(iOut,*)' fail = ',fail
-
+      write(iOut,*)' doN8           = ',doN8
+      write(iOut,*)' doSlowN5       = ',doSlowN5
+      write(iOut,*)' doRegularN5    = ',doRegularN5
+      write(iOut,*)' useBLAS        = ',useBLAS
+      write(iOut,*)' fail           = ',fail
       write(iOut,*)
       write(iOut,*)
-
 
       call GMatrixFile%load(matrixFilename)
       write(IOut,1010) TRIM(matrixFilename)
@@ -79,6 +87,7 @@ INCLUDE 'integraltransformation_mod.f03'
 !
       call GMatrixFile%getArray('ALPHA ORBITAL ENERGIES',mqcVarOut=mqcTmpArray)
       call mqcTmpArray%print(header='Alpha MO Energies')
+      flush(iOut)
       moEnergiesAlpha = mqcTmpArray
       if(GMatrixFile%isUnrestricted()) then
         call mqc_error('UHF/UKS NYI.')
@@ -108,9 +117,30 @@ INCLUDE 'integraltransformation_mod.f03'
 !
       allocate(aoInts(nBasis,nBasis,nBasis,nBasis),  &
         moInts(nBasisUse,nBasisUse,nBasisUse,nBasisUse))
-      aoInts = ERIs
+
+      write(*,*)' Hrant - FLAG B'
+      flush(iOut)
+
+!hph+
+!      aoInts = ERIs
+      write(*,*)
+      write(*,*)' Hrant - ERIs%realArray(1)     = ',ERIs%realArray(1)
+      write(*,*)' Hrant - ERIs%realArray(1000)  = ',ERIs%realArray(1000)
+      write(*,*)' Hrant - ERIs%realArray(230^4) = ',ERIs%realArray(230*230*230*230)
+      write(*,*)
+      call dpReshape4(nBasis,nBasis,nBasis,nBasis,ERIs%realArray,aoInts)
+      write(*,*)' Hrant - aoInts(1  ,1  ,1  ,1  ) = ',aoInts(1,1,1,1)
+      write(*,*)' Hrant - aoInts(230,230,230,230) = ',aoInts(230,230,230,230)
+      write(*,*)
+      write(*,*)
+!hph-
+
       if(iPrint.ge.2) call mqc_print_rank4Tensor_array_real(iOut,  &
         aoInts,header='Intrinsic AO Integrals')
+
+      write(*,*)' Hrant - FLAG C'
+      flush(iOut)
+
 !
 !     Do N^8 AO --> MO transformation.
 !
@@ -123,8 +153,6 @@ INCLUDE 'integraltransformation_mod.f03'
         flush(iOut)
 !
         call cpu_time(time0)
-
-
         do p = 1,nBasisUse
           do q = 1,nBasisUse
             do r = 1,nBasisUse
@@ -143,9 +171,6 @@ INCLUDE 'integraltransformation_mod.f03'
             endDo
           endDo
         endDo
-
-
-
         call cpu_time(time1)
         write(iOut,5000) 'O(N^8) Transformation',time1-time0
       else
@@ -155,9 +180,13 @@ INCLUDE 'integraltransformation_mod.f03'
 !
 !     Do quarter transformations now.
 !
+      call cpu_time(time0)
       moInts = float(0)
       Allocate(partialInts1(nBasisUse,nBasis,nBasis,nBasis))
       partialInts1 = float(0)
+      call cpu_time(time1)
+      write(iOut,5000) 'Init moInts and partialInts1',time1-time0
+      flush(iOut)
 !
       if(doSlowN5) then
         call cpu_time(time0)
@@ -179,26 +208,27 @@ INCLUDE 'integraltransformation_mod.f03'
         partialInts1 = float(0)
       endIf
 !
-      call cpu_time(time0)
-      do nu = 1,nBasis
-        do lambda = 1,nBasis
-          do sigma = 1,nBasis
-            do p = 1,nBasisUse
-              do mu = 1,nBasis
-                partialInts1(p,nu,lambda,sigma) = partialInts1(p,nu,lambda,sigma)  &
-                  + CAlpha(mu,p)*aoInts(mu,nu,lambda,sigma)
+      if(doRegularN5) then
+        call cpu_time(time0)
+        do nu = 1,nBasis
+          do lambda = 1,nBasis
+            do sigma = 1,nBasis
+              do p = 1,nBasisUse
+                tmpReal = float(0)
+                do mu = 1,nBasis
+                  partialInts1(p,nu,lambda,sigma) = partialInts1(p,nu,lambda,sigma)  &
+                    + CAlpha(mu,p)*aoInts(mu,nu,lambda,sigma)
+                endDo
               endDo
             endDo
           endDo
         endDo
-      endDo
-      call cpu_time(time1)
-      write(iOut,5000) 'Quarter Transformation 1b',time1-time0
-      flush(iOut)
+        call cpu_time(time1)
+        write(iOut,5000) 'Quarter Transformation 1b',time1-time0
+        flush(iOut)
+      endIf
 !
       Allocate(partialInts2(nBasisUse,nBasisUse,nBasis,nBasis))
-      partialInts2 = float(0)
-!
       if(doSlowN5) then
         call cpu_time(time0)
         do p = 1,nBasisUse
@@ -219,22 +249,24 @@ INCLUDE 'integraltransformation_mod.f03'
         partialInts2 = float(0)
       endIf
 !
-      call cpu_time(time0)
-      do lambda = 1,nBasis
-        do sigma = 1,nBasis
-          do q = 1,nBasisUse
-            do p = 1,nBasisUse
-              do nu = 1,nBasis
-                partialInts2(p,q,lambda,sigma) = partialInts2(p,q,lambda,sigma)  &
-                  + CAlpha(nu,q)*partialInts1(p,nu,lambda,sigma)
+      if(doRegularN5) then
+        call cpu_time(time0)
+        do lambda = 1,nBasis
+          do sigma = 1,nBasis
+            do q = 1,nBasisUse
+              do p = 1,nBasisUse
+                do nu = 1,nBasis
+                  partialInts2(p,q,lambda,sigma) = partialInts2(p,q,lambda,sigma)  &
+                    + CAlpha(nu,q)*partialInts1(p,nu,lambda,sigma)
+                endDo
               endDo
             endDo
           endDo
         endDo
-      endDo
-      call cpu_time(time1)
-      write(iOut,5000) 'Quarter Transformation 2b',time1-time0
-      flush(iOut)
+        call cpu_time(time1)
+        write(iOut,5000) 'Quarter Transformation 2b',time1-time0
+        flush(iOut)
+      endIf
 !
       DeAllocate(partialInts1)
       Allocate(partialInts1(nBasisUse,nBasisUse,nBasisUse,nBasis))
@@ -260,62 +292,164 @@ INCLUDE 'integraltransformation_mod.f03'
         partialInts1 = float(0)
       endIf
 !
-      call cpu_time(time0)
-      do p = 1,nBasisUse
-        do q = 1,nBasisUse
-              do sigma = 1,nBasis
-          do r = 1,nBasisUse
-            do lambda = 1,nBasis
-                partialInts1(p,q,r,sigma) = partialInts1(p,q,r,sigma)  &
-                  + CAlpha(lambda,r)*partialInts2(p,q,lambda,sigma)
+      if(doRegularN5) then
+        call cpu_time(time0)
+        do p = 1,nBasisUse
+          do q = 1,nBasisUse
+                do sigma = 1,nBasis
+            do r = 1,nBasisUse
+              do lambda = 1,nBasis
+                  partialInts1(p,q,r,sigma) = partialInts1(p,q,r,sigma)  &
+                    + CAlpha(lambda,r)*partialInts2(p,q,lambda,sigma)
+                endDo
               endDo
             endDo
           endDo
         endDo
-      endDo
-      call cpu_time(time1)
-      write(iOut,5000) 'Quarter Transformation 3b',time1-time0
-      flush(iOut)
+        call cpu_time(time1)
+        write(iOut,5000) 'Quarter Transformation 3b',time1-time0
+        flush(iOut)
+      endIf
 !
       DeAllocate(partialInts2)
       moInts = float(0)
 !
-      call cpu_time(time0)
-      do p = 1,nBasisUse
-        do q = 1,nBasisUse
-          do r = 1,nBasisUse
-            do s = 1,nBasisUse
-              do sigma = 1,nBasis
-                moInts(p,q,r,s) = moInts(p,q,r,s)  &
-                  + CAlpha(sigma,s)*partialInts1(p,q,r,sigma)
+      if(doRegularN5.or.doSlowN5) then
+        call cpu_time(time0)
+        do p = 1,nBasisUse
+          do q = 1,nBasisUse
+            do r = 1,nBasisUse
+              do s = 1,nBasisUse
+                do sigma = 1,nBasis
+                  moInts(p,q,r,s) = moInts(p,q,r,s)  &
+                    + CAlpha(sigma,s)*partialInts1(p,q,r,sigma)
+                endDo
               endDo
             endDo
           endDo
         endDo
-      endDo
-      call cpu_time(time1)
-      write(iOut,5000) 'Quarter Transformation 4',time1-time0
-      flush(iOut)
-      DeAllocate(partialInts1)
-      if(iPrint.ge.1) call mqc_print_rank4Tensor_array_real(iOut,  &
-        moInts,header='Transformed MO Integrals 2')
-      iCount = 0
-      do p = 1,nBasisUse
-        do q = 1,p
-          pq = (p*(p-1))/2 + q
-          do r = 1,nBasisUse
-            do s = 1,r
-              rs = (r*(r-1))/2 + s
-              if(pq.ge.rs) then
-                pqrs = (pq*(pq-1))/2 + rs
-                iCount = iCount + 1
-              endIf
-            endDo
-          endDo
-        endDo
-      endDo
+        call cpu_time(time1)
+        write(iOut,5000) 'Quarter Transformation 4',time1-time0
+        flush(iOut)
+        DeAllocate(partialInts1)
+        if(iPrint.ge.1) call mqc_print_rank4Tensor_array_real(iOut,  &
+          moInts,header='Transformed MO Integrals 2')
+      endIf
+!
+!     Load up AA MO ERIs from the matrixfile and print them out to ensure the
+!     explicit AO-->MO transformations above gave the right answers.
+!
       call GMatrixFile%getArray('AA MO 2E INTEGRALS',mqcVarOut=mqcTmpArray)
       if(iPrint.ge.1) call mqcTmpArray%print(header='MO Ints from Matrix File')
+!
+!     Now, try some matrix multiplication based approach to the quarter
+!     transformations using the intrinsic Transform and MatMul functions.
+!
+      Allocate(tmpMatrix1(nBasisUse,nBasis*nBasis*nBasis))
+      Allocate(tmpMatrix2(nBasis,nBasis*nBasis*nBasisUse))
+      call cpu_time(time0)
+      if(useBLAS) then
+        call dgemm('t','n',nBasisUse,nBasis*nBasis*nBasis,  &
+          nBasis,float(1),CAlpha,nBasis,aoInts,nBasis,float(0),  &
+          tmpMatrix1,nBasisUse)
+      else
+        tmpMatrix1 = MatMul(Transpose(CAlpha),  &
+          Reshape(aoInts,(/nBasis,nBasis*nBasis*nBasis/)))
+      endIf
+      call cpu_time(time1)
+      write(iOut,5000) 'Quarter Transformation 1 w/MatMul',time1-time0
+      flush(iOut)
+!
+      call cpu_time(time0)
+      tmpMatrix2 = Reshape(Transpose(tmpMatrix1),  &
+        (/nBasis,nBasis*nBasis*nBasisUse/))
+      call cpu_time(time1)
+      write(iOut,5000) 'tmpMatrix1 transpose 1',time1-time0
+      flush(iOut)
+      call cpu_time(time0)
+      DeAllocate(tmpMatrix1)
+      Allocate(tmpMatrix1(nBasisUse,nBasis*nBasis*nBasisUse))
+      if(useBLAS) then
+        call dgemm('t','n',nBasisUse,nBasis*nBasis*nBasisUse,  &
+          nBasis,float(1),CAlpha,nBasis,tmpMatrix2,nBasis,float(0),  &
+          tmpMatrix1,nBasisUse)
+      else
+        tmpMatrix1 = MatMul(Transpose(CAlpha),tmpMatrix2)
+      endIf
+      call cpu_time(time1)
+      write(iOut,5000) 'Quarter Transformation 2 w/MatMul',time1-time0
+      flush(iOut)
+!
+      call cpu_time(time0)
+      DeAllocate(tmpMatrix2)
+      Allocate(tmpMatrix2(nBasis,nBasis*nBasisUse*nBasisUse))
+      tmpMatrix2 = Reshape(Transpose(tmpMatrix1),  &
+        (/nBasis,nBasis*nBasisUse*nBasisUse/))
+      call cpu_time(time1)
+      write(iOut,5000) 'tmpMatrix1 transpose 2',time1-time0
+      flush(iOut)
+      call cpu_time(time0)
+      DeAllocate(tmpMatrix1)
+      Allocate(tmpMatrix1(nBasisUse,nBasis*nBasisUse*nBasisUse))
+      if(useBLAS) then
+        call dgemm('t','n',nBasisUse,nBasis*nBasisUse*nBasisUse,  &
+          nBasis,float(1),CAlpha,nBasis,tmpMatrix2,nBasis,float(0),  &
+          tmpMatrix1,nBasisUse)
+      else
+        tmpMatrix1 = MatMul(Transpose(CAlpha),tmpMatrix2)
+      endIf
+      call cpu_time(time1)
+      write(iOut,5000) 'Quarter Transformation 3 w/MatMul',time1-time0
+      flush(iOut)
+!
+      call cpu_time(time0)
+      DeAllocate(tmpMatrix2)
+      Allocate(tmpMatrix2(nBasis,nBasisUse*nBasisUse*nBasisUse))
+      tmpMatrix2 = Reshape(Transpose(tmpMatrix1),  &
+        (/nBasis,nBasisUse*nBasisUse*nBasisUse/))
+      call cpu_time(time1)
+      write(iOut,5000) 'tmpMatrix1 transpose 3',time1-time0
+      flush(iOut)
+      call cpu_time(time0)
+      DeAllocate(tmpMatrix1)
+      Allocate(tmpMatrix1(nBasisUse,nBasisUse*nBasisUse*nBasisUse))
+      if(useBLAS) then
+        call dgemm('t','n',nBasisUse,nBasisUse*nBasisUse*nBasisUse,  &
+          nBasis,float(1),CAlpha,nBasis,tmpMatrix2,nBasis,float(0),  &
+          tmpMatrix1,nBasisUse)
+      else
+        tmpMatrix1 = MatMul(Transpose(CAlpha),tmpMatrix2)
+      endIf
+      call cpu_time(time1)
+      write(iOut,5000) 'Quarter Transformation 4 w/MatMul',time1-time0
+      flush(iOut)
+!
+      call cpu_time(time0)
+      moInts = Reshape(Transpose(tmpMatrix1),  &
+        (/nBasisUse,nBasisUse,nBasisUse,nBasisUse/))
+      DeAllocate(tmpMatrix1,tmpMatrix2)
+      call cpu_time(time1)
+      write(iOut,5000) 'Finalize moInts w/MatMul',time1-time0
+      flush(iOut)
+
+
+!
+!     Test the timing of N^2,N^2 transpose.
+!
+      call cpu_time(time0)
+      Allocate(tmpMatrix1(nBasisUse*nBasisUse,nBasisUse*nBasisUse))
+      tmpMatrix1 = Reshape(moInts,  &
+        (/nBasisUse*nBasisUse,nBasisUse*nBasisUse/))
+      call cpu_time(time1)
+      write(iOut,5000) 'Time to allocate tmpMatrix and reshape mo ERIs.',time1-time0
+      call cpu_time(time0)
+      Allocate(tmpMatrix2(nBasisUse*nBasisUse,nBasisUse*nBasisUse))
+      tmpMatrix2 = Transpose(tmpMatrix1)
+      call cpu_time(time1)
+      write(iOut,5000) 'Time for ERI N^2 x N^2 transpose.',time1-time0
+
+      
+      
 !
 !     Evaluate the E(2) AA, BB, AB, and BA contribution.
 !
@@ -360,19 +494,24 @@ INCLUDE 'integraltransformation_mod.f03'
       call cpu_time(time1)
       write(iOut,5000) 'Opposite Spin E2',time1-time0
       E2BA = E2AB
-
-
-
-
       write(iOut,3000) E2AA,E2AB
       write(*,*)' Total E2 = ',E2AA+E2BB+E2AB
-
-
-
-
-
-
 !
   999 Continue
+      call cpu_time(timeEnd)
+      write(iOut,5000) 'TOTAL JOB TIME',timeEnd-timeStart
       write(iOut,8999)
       end program integraltransformation
+
+
+      subroutine dpReshape4(N1,N2,N3,N4,arrayIn,r4ArrayOut)
+!
+      use iso_fortran_env
+      implicit none
+      integer(kind=int64)::N1,N2,N3,N4
+      real(kind=real64),dimension(N1,N2,N3,N4)::arrayIn,r4ArrayOut
+!
+      r4ArrayOut = arrayIn
+!
+      return
+      end subroutine dpReshape4
