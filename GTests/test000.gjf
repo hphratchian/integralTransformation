@@ -1,5 +1,5 @@
 %chk=test000
-#p test hf geom=modela opt output=(mat,AO2ElectronIntegrals,MO2ElectronIntegrals) tran=full window=full
+#p test geom=modela mp2=full output=(mat,AO2ElectronIntegrals,MO2ElectronIntegrals) tran=full window=full
 int=noraff nosymm
 gen
 

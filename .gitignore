@@ -1,10 +1,10 @@
-*.mat
-*.log
-*.out
-*.chk
-*.sbatch
-*.qlog
-*.fmat
+GTests/*.log
+GTests/*.mat
+GTests/*.out
+GTests/*.chk
+GTests/*.sbatch
+GTests/*.qlog
+GTests/*.fmat
 *.mod
 *.o
 *.exe

@@ -20,12 +20,12 @@
      myDimensions(1) =                         6
 
  Alpha MO Energies
-       1       -2.347001
-       2       -0.292690
-       3        0.078920
-       4        0.163784
-       5        0.163784
-       6        0.571573
+       1       -2.348647
+       2       -0.285696
+       3        0.078261
+       4        0.163938
+       5        0.163938
+       6        0.549101
   Hrant -  isUnrestricted:   F
   Hrant - FLAG B
   Hrant - FLAG C
@@ -47,8 +47,8 @@
   Opposite Spin E2...
  Time (Opposite Spin E2):      0.0 s.
 
- E(2)-SS =   -0.0000010707 a.u.    E(2)-OS =   -0.0122645011 a.u.
-  Total E2 =   -1.2266642465321002E-002
+ E(2)-SS =   -0.0000004185 a.u.    E(2)-OS =   -0.0128638011 a.u.
+  Total E2 =   -1.2864637977996361E-002
  Time (TOTAL JOB TIME):      0.0 s.
 
  END OF PROGRAM integralTransformation.
