@@ -33,7 +33,8 @@ INCLUDE 'integraltransformation_mod.f03'
 !     Format Statements
 !
  1000 Format(1x,'Enter Test Program integralTransformation.')
- 1010 Format(3x,'Matrix File: ',A,/)
+ 1010 Format(1x,'Matrix File: ',A,/)
+ 1020 Format(1x,'Use ',I3,' shared memory processors.')
  1100 Format(1x,'nAtoms    =',I4,6x,'nBasis  =',I4,6x,'nBasisUse=',I4,/,  &
              1x,'nElectrons=',I4,6x,'nElAlpha=',I4,6x,'nElBeta  =',I4)
  1500 Format(/,1x,'Carrying out O(N^8) transformation.')
@@ -56,27 +57,12 @@ INCLUDE 'integraltransformation_mod.f03'
       if(nCommands.eq.0)  &
         call mqc_error('No command line arguments provided. The input Gaussian matrix file name is required.')
       call get_command_argument(1,tmpString)
-      call commandLineArgs(iPrint,matrixFilename,doN8,doSlowN5,  &
+      call commandLineArgs(iPrint,nOMP,matrixFilename,doN8,doSlowN5,  &
         doRegularN5,useBLAS,fail)
-
-      nOMP = 12
-      write(*,*)' Hrant - nOMP = ',nOMP
       call omp_set_num_threads(nOMP)
-
-      write(iOut,*)
-      write(iOut,*)
-      write(iOut,*)' iPrint         = ',iPrint
-      write(iOut,*)' matrixFilename = ',TRIM(matrixFilename)
-      write(iOut,*)' doN8           = ',doN8
-      write(iOut,*)' doSlowN5       = ',doSlowN5
-      write(iOut,*)' doRegularN5    = ',doRegularN5
-      write(iOut,*)' useBLAS        = ',useBLAS
-      write(iOut,*)' fail           = ',fail
-      write(iOut,*)
-      write(iOut,*)
-
       call GMatrixFile%load(matrixFilename)
       write(IOut,1010) TRIM(matrixFilename)
+      write(iOut,1020) nOMP
       nAtoms = GMatrixFile%getVal('nAtoms')
       nBasis = Int(GMatrixFile%getVal('nbasis'))
       nBasisUse = Int(GMatrixFile%getVal('nbasisuse'))
